@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on fixed
-version: "1.12.5"
+version: "1.12.6"
 slug: vcontrold
 description: Vcontrol add-on
 url: "https://github.com/seppe912/homeassistant-vcontrol"
