@@ -4,6 +4,8 @@
 
 ## Add-ons
 
+--fixed crash when a set command is send while an get commandque is running.
+
 This repository contains the following add-ons
 
 ### [Vcontrol add-on](./vcontrold)
