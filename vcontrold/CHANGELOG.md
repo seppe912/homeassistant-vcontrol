@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.12.0-6
+
+- fixed crash when a set command is send while an get commandque is running.
+
 ## 1.12.0-5
 
 - Code Optimization
