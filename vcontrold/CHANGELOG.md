@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.13.2
+
+- Fix parsing of the Home Assistant `commands` list so all configured commands are loaded again
+
 ## 1.13.1
 
 - Fix compatibility with custom `vcontrold.xml` files that still use legacy or relative `vito.xml` XInclude paths
@@ -11,7 +15,7 @@
 - Fix MQTT setter topic parsing, string publishing, and runtime script robustness
 - Move runtime-generated files to `/run/vcontrold` and simplify the Docker build
 
-## 1.12.0-5
+## 1.12.5
 
 - Code Optimization
 

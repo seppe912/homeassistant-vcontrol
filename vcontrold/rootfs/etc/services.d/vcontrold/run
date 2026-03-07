@@ -78,7 +78,11 @@ rm -f "${runtime_commands_file}" "${runtime_template_file}" "${runtime_output_sc
 printf '#!/bin/sh\n' > "${runtime_template_file}"
 
 # Configure scripts based on commands
-IFS='|' read -r -a commands_array <<< "${config_commands_raw}"
+mapfile -t commands_array <<< "${config_commands_raw}"
+
+if (( ${#commands_array[@]} == 1 )) && [[ "${commands_array[0]}" == *'|'* ]]; then
+    IFS='|' read -r -a commands_array <<< "${commands_array[0]}"
+fi
 i=0
 for command_entry in "${commands_array[@]}"
 do
