@@ -1,31 +1,29 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:trixie
 FROM $BUILD_FROM
 
-ENV VCONTROLD_VERSION "v0.98.12"
-
-# Execute during the build of the image
-ARG TEMPIO_VERSION BUILD_ARCH
-RUN \
-    curl -sSLf -o /usr/bin/tempio \
-    "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_${BUILD_ARCH}"
+ENV VCONTROLD_VERSION="v0.98.12"
 
 RUN \
     apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y build-essential git cmake telnet libxml2-dev mosquitto-clients && \
-    git clone --depth 1 --branch $VCONTROLD_VERSION https://github.com/openv/vcontrold.git && \
-    cd vcontrold && \
-    mkdir build && \
-    cd build && \
-    cmake -DMANPAGES=OFF .. && \
-    make install && \
-    make clean && \
-    cd .. && \
-    cd .. && \
-    apt-get purge -y --auto-remove build-essential git cmake && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        libxml2 \
+        libxml2-dev \
+        mosquitto-clients && \
+    git clone --depth 1 --branch "${VCONTROLD_VERSION}" https://github.com/openv/vcontrold.git /tmp/vcontrold && \
+    cmake -S /tmp/vcontrold -B /tmp/vcontrold/build -DMANPAGES=OFF && \
+    cmake --build /tmp/vcontrold/build --parallel "$(nproc)" && \
+    cmake --install /tmp/vcontrold/build && \
+    apt-get purge -y --auto-remove \
+        build-essential \
+        cmake \
+        git \
+        libxml2-dev && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* vcontrold
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy root filesystem
 COPY rootfs /

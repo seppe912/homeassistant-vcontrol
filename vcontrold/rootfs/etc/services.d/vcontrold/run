@@ -5,12 +5,37 @@
 # ==============================================================================
 
 # Declare variables
+declare auth_arg
+declare cmd
+declare command_entry
+declare config_commands_raw
 declare config_deviceid
-declare config_commands
+declare config_file_vcontrold
+declare config_file_vito="/etc/vcontrold/vito.xml"
 declare config_tty
-declare config_file_vito="vito.xml"
-declare config_file_vcontrold="/config/vcontrold/vcontrold.xml"
-declare use_custom_config_file_vcontrold=false
+declare type
+declare -a commands_array=()
+declare -r addon_config_dir="/config"
+declare -r default_vcontrold_config="/etc/vcontrold/vcontrold.xml"
+declare -r legacy_config_dir="/homeassistant/vcontrold"
+declare -r runtime_dir="/run/vcontrold"
+declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
+declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
+declare -r runtime_output_script="${runtime_dir}/3_mqtt_pub.sh"
+
+is_local_vcontrold() {
+    case "${VCONTROL_HOST}" in
+        localhost|127.0.0.1|::1)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Fetch MQTT settings
+source /etc/services.d/get_mqtt_settings.sh
 
 # Fetch Vcontrold settings
 source /etc/services.d/get_vcontrold_settings.sh
@@ -18,75 +43,96 @@ source /etc/services.d/get_vcontrold_settings.sh
 # Get configuration options from user
 config_tty=$(bashio::config 'tty')
 config_deviceid=$(bashio::config 'device_id')
-config_commands=$(bashio::config 'commands')
+config_commands_raw=$(bashio::config 'commands')
 
 # Check if custom vito.xml file exists
-if [ -f "/config/vcontrold/vito.xml" ]; then
+if [ -f "${addon_config_dir}/vito.xml" ]; then
     bashio::log.info "Using custom vito.xml file."
-    config_file_vito="/config/vcontrold/vito.xml"
+    config_file_vito="${addon_config_dir}/vito.xml"
+elif [ -f "${legacy_config_dir}/vito.xml" ]; then
+    bashio::log.info "Using legacy custom vito.xml file from /homeassistant/vcontrold."
+    config_file_vito="${legacy_config_dir}/vito.xml"
 else
     bashio::log.info "Using default vito.xml file."
 fi
 
 # Check if custom vcontrold.xml file exists
-if [ -f "/config/vcontrold/vcontrold.xml" ]; then
+if [ -f "${addon_config_dir}/vcontrold.xml" ]; then
     bashio::log.info "Using custom vcontrold.xml file."
-    use_custom_config_file_vcontrold=true
+    config_file_vcontrold="${addon_config_dir}/vcontrold.xml"
+elif [ -f "${legacy_config_dir}/vcontrold.xml" ]; then
+    bashio::log.info "Using legacy custom vcontrold.xml file from /homeassistant/vcontrold."
+    config_file_vcontrold="${legacy_config_dir}/vcontrold.xml"
 else
     bashio::log.info "Using default vcontrold.xml file."
+    config_file_vcontrold="${runtime_dir}/vcontrold.xml"
 fi
 
-# Cleanup old scripts
-rm -f /etc/vcontrold/1_mqtt_commands.txt /etc/vcontrold/2_mqtt.tmpl || true
-echo '#!/bin/sh' > /etc/vcontrold/2_mqtt.tmpl
+# Prepare runtime files
+mkdir -p "${runtime_dir}"
+rm -f "${runtime_commands_file}" "${runtime_template_file}" "${runtime_output_script}"
+printf '#!/bin/sh\n' > "${runtime_template_file}"
 
 # Configure scripts based on commands
-commands_array=(`echo $config_commands | tr '|' ' '`)
+IFS='|' read -r -a commands_array <<< "${config_commands_raw}"
 i=0
-for command in "${commands_array[@]}"
+for command_entry in "${commands_array[@]}"
 do
-   :
-    ((i=i+1))
-    cmd=$(echo $command | cut -d':' -f1)
-    type=$(echo $command | cut -d':' -f2)
+    [[ -n "${command_entry}" ]] || continue
 
-    bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
-    echo $cmd >> /etc/vcontrold/1_mqtt_commands.txt
-
-    R='$'$i''
-    if [[ $type == "STRING" ]]; then
-        R='"$R'$i'"'
+    if [[ "${command_entry}" != *:* ]]; then
+        bashio::log.warning "Skipping invalid command entry: ${command_entry}"
+        continue
     fi
 
-    echo 'if [ "x$E'$i'" = "xOK" ]; then' >> /etc/vcontrold/2_mqtt.tmpl
-    echo '  mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC/$C'$i' -m '$R'' >> /etc/vcontrold/2_mqtt.tmpl
-    echo 'fi' >> /etc/vcontrold/2_mqtt.tmpl
+    ((i=i+1))
+    cmd=${command_entry%%:*}
+    type=${command_entry#*:}
+
+    if [[ -z "${cmd}" ]]; then
+        bashio::log.warning "Skipping empty command entry at position ${i}."
+        ((i=i-1))
+        continue
+    fi
+
+    bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
+    printf '%s\n' "${cmd}" >> "${runtime_commands_file}"
+
+    printf 'if [ "x$E%d" = "xOK" ]; then\n' "${i}" >> "${runtime_template_file}"
+    printf '  mosquitto_pub -h %q -p %q' "${MQTT_HOST}" "${MQTT_PORT}" >> "${runtime_template_file}"
+    for auth_arg in "${MQTT_AUTH_ARGS[@]}"; do
+        printf ' %q' "${auth_arg}" >> "${runtime_template_file}"
+    done
+    printf ' -t %q/$C%d -m "$%d"\n' "${MQTT_TOPIC}" "${i}" "${i}" >> "${runtime_template_file}"
+    printf 'fi\n' >> "${runtime_template_file}"
 done
 
-# Configure vcontrold.xml with the user-specified values
-sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
-sed -i "s|#VITOXML#|$config_file_vito|g" /etc/vcontrold/vcontrold.xml
+if [[ ! -s "${runtime_commands_file}" ]]; then
+    bashio::exit.nok "No valid commands configured."
+fi
 
-# Enable or disable debug mode based on user configuration
-if bashio::config.true 'debug'; then
-    sed -i "s/#DEBUG#/y/g" /etc/vcontrold/vcontrold.xml
-else
-    sed -i "s/#DEBUG#/n/g" /etc/vcontrold/vcontrold.xml
+if [[ "${config_file_vcontrold}" == "${runtime_dir}/vcontrold.xml" ]]; then
+    cp "${default_vcontrold_config}" "${config_file_vcontrold}"
+    sed -i "s/#DEVICEID#/${config_deviceid}/g" "${config_file_vcontrold}"
+    sed -i "s|#VITOXML#|${config_file_vito}|g" "${config_file_vcontrold}"
+
+    if bashio::config.true 'debug'; then
+        sed -i "s/#DEBUG#/y/g" "${config_file_vcontrold}"
+    else
+        sed -i "s/#DEBUG#/n/g" "${config_file_vcontrold}"
+    fi
 fi
 
 # Start the vcontrold service or a dummy process for external control
-if [ "$VCONTROL_HOST" = "localhost" ]; then
+if is_local_vcontrold; then
     bashio::log.info "Starting local vcontrold..."
 
-    # Check if a custom config file2 is used and include -x option only if needed
-    if [ "$use_custom_config_file_vcontrold" = true ]; then
-        bashio::log.info "Using custom vcontrold.xml."
-        exec /usr/sbin/vcontrold -x "$config_file_vcontrold" -n -U root -d "$config_tty"
-    else
-        bashio::log.info "Using default vcontrold.xml."
-        exec /usr/sbin/vcontrold -n -U root -d "$config_tty"
+    if [[ -z "${config_tty}" ]]; then
+        bashio::exit.nok "A tty device is required when running local vcontrold."
     fi
-else
-    bashio::log.info "vcontrold is not running locally. Keeping process alive."
-    tail -f /dev/null
+
+    exec /usr/sbin/vcontrold -x "${config_file_vcontrold}" -n -U root -d "${config_tty}"
 fi
+
+bashio::log.info "Using remote vcontrold at ${VCONTROL_HOST}:${VCONTROL_PORT}. Keeping process alive."
+exec tail -f /dev/null

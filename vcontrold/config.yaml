@@ -1,16 +1,15 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.12.5"
+version: "1.13.0"
 slug: vcontrold
-description: Vcontrol add-on
+description: MQTT bridge for Viessmann vcontrold
 url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
 arch:
-  - armhf
-  - armv7
   - aarch64
   - amd64
-  - i386
 init: false
+startup: services
+uart: true
 options:
   tty: "/dev/ttyUSB0"
   refresh: 30
@@ -75,14 +74,10 @@ apparmor: false
 ports:
   3002/tcp: null
 ports_description:
-  3002/tcp: "Vcontrol deamon"
+  3002/tcp: "Vcontrol daemon"
 services:
   - mqtt:need
-devices:
-  - /dev/ttyUSB0
-  - /dev/ttyUSB1
-  - /dev/ttyUSB2
-  - /dev/ttyUSB3
-map: 
-  - type: config
-    read_only: False
+map:
+  - type: addon_config
+  - type: homeassistant_config
+    path: /homeassistant

@@ -10,50 +10,50 @@ source /etc/services.d/get_mqtt_settings.sh
 # Fetch Vcontrold settings
 source /etc/services.d/get_vcontrold_settings.sh
 
+declare command
+declare payload
+declare request
+declare topic
+declare value
+
 # Ensure required environment variables are set
-if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_TOPIC" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
+if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$MQTT_TOPIC" || -z "$REFRESH_RATE" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
     bashio::log.error "Missing required MQTT or Vcontrold environment variables."
     exit 1
 fi
 
-bashio::log.info "Starting MQTT subscription to topic: $MQTT_TOPIC/#"
+bashio::log.info "Starting MQTT subscription to topic: ${MQTT_TOPIC}/#"
 
-## Run your program
-while true ; do
-    mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t "$MQTT_TOPIC/#" | while read -r payload
-    do
-        # Here is the callback to execute whenever you receive a message:
-        topic=$(echo $payload | cut -d' ' -f1)
-        value=$(echo $payload | cut -d' ' -f2-)
-        if [[ $topic =~ "/set" ]]; then
-            command=$(echo $topic | cut -d'/' -f2)
-            bashio::log.info "Sending command: [${command}]: ${value}"
-            vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -o /dev/stdout -c "${command} ${value}"
-        fi
-    done
-    sleep $REFRESH_RATE
-done
-
-# Main loop
 while true; do
-    mosquitto_sub -v -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -t "$MQTT_TOPIC/#" | while read -r payload; do
-        # Parse the incoming MQTT message
-        topic=$(echo "$payload" | cut -d' ' -f1)
-        value=$(echo "$payload" | cut -d' ' -f2-)
+    mosquitto_sub -v -h "$MQTT_HOST" -p "$MQTT_PORT" "${MQTT_AUTH_ARGS[@]}" -t "${MQTT_TOPIC}/#" | while IFS= read -r payload; do
+        topic=${payload%% *}
 
-        # Process only topics containing "/set"
-        if [[ "$topic" =~ "/set" ]]; then
-            command=$(echo "$topic" | cut -d'/' -f2)
-            bashio::log.info "Received command: [${command}] with value: ${value}"
+        if [[ "${payload}" == *" "* ]]; then
+            value=${payload#* }
+        else
+            value=""
+        fi
 
-            # Send command to vclient
-            if vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -o /dev/stdout -c "${command} ${value}"; then
-                bashio::log.info "Command [${command}] executed successfully."
-            else
-                bashio::log.error "Failed to execute command [${command}] with value: ${value}"
-            fi
+        command=${topic#"$MQTT_TOPIC"/}
+        if [[ "${command}" == "${topic}" || "${command}" != set* ]]; then
+            continue
+        fi
+
+        bashio::log.info "Received command: [${command}] with value: ${value}"
+
+        if [[ -n "${value}" ]]; then
+            request="${command} ${value}"
+        else
+            request="${command}"
+        fi
+
+        if vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -o /dev/stdout -c "${request}"; then
+            bashio::log.info "Command [${command}] executed successfully."
+        else
+            bashio::log.error "Failed to execute command [${command}] with value: ${value}"
         fi
     done
-    bashio::log.info "Sleeping for $REFRESH_RATE seconds before restarting subscription."
+
+    bashio::log.warning "MQTT subscription ended. Reconnecting in ${REFRESH_RATE} seconds."
     sleep "$REFRESH_RATE"
 done

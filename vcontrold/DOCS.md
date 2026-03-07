@@ -1,19 +1,21 @@
 # Home Assistant Add-on: Vcontrol add-on
 
+This add-on targets current 64-bit Home Assistant systems (`aarch64`, `amd64`).
+
 ## How to use
-Once installed, the plugin fetches data from `vcontrold` and pushes it to the MQTT topic `openv` by executing the commands provided in the configuration and pushing the returned values into a correnspoding topic for that specific command. A list of all possible commands and formats can be found in **/etc/vcontrold/vito.xml**.
+Once installed, the add-on fetches data from `vcontrold` and pushes it to the MQTT topic `openv` by executing the commands provided in the configuration and publishing the returned values into a corresponding topic for that specific command. A list of all possible commands and formats can be found in **/etc/vcontrold/vito.xml**.
 
 Example: Command `getTempA` is executed and its return value is pushed into topic `openv/getTempA`.
 
-If you want to set values / write to Vitodens, simply write to a topic that has the man of the setter command as specified in **/etc/vcontrold/vito.xml**.
+If you want to set values / write to Vitodens, simply write to a topic that has the name of the setter command as specified in **/etc/vcontrold/vito.xml**.
 
-Example: Writing a value to the topic `openv/setTempWWSoll` will set the target temperature for hot water to a new value. You will be able to see it in `opemv/getTempWWSoll` in the next readout cycle.
+Example: Writing a value to the topic `openv/setTempWWSoll` will set the target temperature for hot water to a new value. You will be able to see it in `openv/getTempWWSoll` in the next readout cycle.
 
 ## Configuration
 
 ### Add-On Configuration
-In the configuration section, you have 2 choices to connect to your **Vitodens** device using an an **Optolink** interface:
-1. For a locally connected **Optolink** cable, set the USB/TTY device. The add-on will pass through that USB port run **vcontrold** locally inside docker.
+In the configuration section, you have 2 choices to connect to your **Vitodens** device using an **Optolink** interface:
+1. For a locally connected **Optolink** cable, set the USB/TTY device. The add-on will pass through that USB port and run **vcontrold** locally inside Docker.
 2. For a remotely running **vcontrold** (e.g. RPi connected to your **Vitodens** device), select its hostname and port (_Vcontrold host/port_). These settings are by default set to localhost:3002.
 
 Select a _refresh rate_ that defines the interval used for polling your device and the _device id_ (typically also seen in the device identifier string) which is used to select the correct mapping for the commands that are executed.
@@ -112,11 +114,12 @@ mqtt:
 ```
 ### Custom vito.xml / vcontrold.xml configuration file
 
-The module use the `config` option (refer to https://developers.home-assistant.io/docs/add-ons/configuration/#add-on-advanced-options) for mounting a custom configuration file. It verifies the existence of a 'vito.xml' and 'vcontrold.xml' file during startup.
+The add-on uses the public add-on config folder for custom XML files. It verifies the existence of `vito.xml` and `vcontrold.xml` during startup.
 
-Ensure the file is placed in the specified path:
+Place the files in the Home Assistant path:
 ```
-config/vcontrold/vito.xml
-config/vcontrold/vcontrold.xml
+addon_configs/vcontrold/vito.xml
+addon_configs/vcontrold/vcontrold.xml
 ```
 
+For backward compatibility, existing files in `config/vcontrold/` are still detected in read-only mode.

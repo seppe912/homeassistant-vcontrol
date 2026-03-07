@@ -1,5 +1,12 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.13.0
+
+- Align the add-on with current Home Assistant 2026 / Supervisor conventions
+- Switch custom XML handling to `addon_config` with legacy `config/vcontrold` fallback
+- Fix MQTT setter topic parsing, string publishing, and runtime script robustness
+- Move runtime-generated files to `/run/vcontrold` and simplify the Docker build
+
 ## 1.12.0-5
 
 - Code Optimization
