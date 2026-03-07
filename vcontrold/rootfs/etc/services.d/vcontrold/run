@@ -12,18 +12,22 @@ declare config_commands_raw
 declare config_deviceid
 declare config_file_vcontrold
 declare config_file_vcontrold_source
-declare config_file_vito="/etc/vcontrold/vito.xml"
 declare config_tty
 declare type
 declare -a commands_array=()
-declare -r addon_config_dir="/config"
-declare -r default_vcontrold_config="/etc/vcontrold/vcontrold.xml"
-declare -r legacy_config_dir="/homeassistant/vcontrold"
-declare -r runtime_dir="/run/vcontrold"
+declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
+declare -r addon_config_dir="${ADDON_CONFIG_DIR:-/config}"
+declare -r legacy_config_dir="${LEGACY_CONFIG_DIR:-/homeassistant/vcontrold}"
+declare -r vcontrold_config_dir="${VCONTROLD_CONFIG_DIR:-/etc/vcontrold}"
+declare -r config_file_vito="${vcontrold_config_dir}/vito.xml"
+declare -r default_vcontrold_config="${vcontrold_config_dir}/vcontrold.xml"
+declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
 declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
 declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
 declare -r runtime_output_script="${runtime_dir}/3_mqtt_pub.sh"
 declare -r runtime_vcontrold_config="${runtime_dir}/vcontrold.xml"
+declare -r tail_bin="${TAIL_BIN:-tail}"
+declare -r vcontrold_bin="${VCONTROLD_BIN:-/usr/sbin/vcontrold}"
 
 is_local_vcontrold() {
     case "${VCONTROL_HOST}" in
@@ -37,10 +41,11 @@ is_local_vcontrold() {
 }
 
 # Fetch MQTT settings
-source /etc/services.d/get_mqtt_settings.sh
+source "${services_dir}/command_utils.sh"
+source "${services_dir}/get_mqtt_settings.sh"
 
 # Fetch Vcontrold settings
-source /etc/services.d/get_vcontrold_settings.sh
+source "${services_dir}/get_vcontrold_settings.sh"
 
 # Get configuration options from user
 config_tty=$(bashio::config 'tty')
@@ -78,11 +83,7 @@ rm -f "${runtime_commands_file}" "${runtime_template_file}" "${runtime_output_sc
 printf '#!/bin/sh\n' > "${runtime_template_file}"
 
 # Configure scripts based on commands
-mapfile -t commands_array <<< "${config_commands_raw}"
-
-if (( ${#commands_array[@]} == 1 )) && [[ "${commands_array[0]}" == *'|'* ]]; then
-    IFS='|' read -r -a commands_array <<< "${commands_array[0]}"
-fi
+load_vcontrold_commands_array "${config_commands_raw}" commands_array
 i=0
 for command_entry in "${commands_array[@]}"
 do
@@ -145,8 +146,8 @@ if is_local_vcontrold; then
         bashio::exit.nok "A tty device is required when running local vcontrold."
     fi
 
-    exec /usr/sbin/vcontrold -x "${config_file_vcontrold}" -n -U root -d "${config_tty}"
+    exec "${vcontrold_bin}" -x "${config_file_vcontrold}" -n -U root -d "${config_tty}"
 fi
 
 bashio::log.info "Using remote vcontrold at ${VCONTROL_HOST}:${VCONTROL_PORT}. Keeping process alive."
-exec tail -f /dev/null
+exec "${tail_bin}" -f /dev/null
