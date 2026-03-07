@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.13.1
+
+- Fix compatibility with custom `vcontrold.xml` files that still use legacy or relative `vito.xml` XInclude paths
+
 ## 1.13.0
 
 - Align the add-on with current Home Assistant 2026 / Supervisor conventions
