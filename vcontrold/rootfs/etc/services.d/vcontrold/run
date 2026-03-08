@@ -12,6 +12,7 @@ declare config_commands_raw
 declare config_deviceid
 declare config_file_vcontrold
 declare config_file_vcontrold_source
+declare config_file_vito
 declare config_tty
 declare type
 declare value_placeholder
@@ -20,7 +21,7 @@ declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
 declare -r addon_config_dir="${ADDON_CONFIG_DIR:-/config}"
 declare -r legacy_config_dir="${LEGACY_CONFIG_DIR:-/homeassistant/vcontrold}"
 declare -r vcontrold_config_dir="${VCONTROLD_CONFIG_DIR:-/etc/vcontrold}"
-declare -r config_file_vito="${vcontrold_config_dir}/vito.xml"
+declare -r default_vito_config="${vcontrold_config_dir}/vito.xml"
 declare -r default_vcontrold_config="${vcontrold_config_dir}/vcontrold.xml"
 declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
 declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
@@ -52,6 +53,7 @@ source "${services_dir}/get_vcontrold_settings.sh"
 config_tty=$(bashio::config 'tty')
 config_deviceid=$(bashio::config 'device_id')
 config_commands_raw=$(bashio::config 'commands')
+config_file_vito="${default_vito_config}"
 
 # Check if custom vito.xml file exists
 if [ -f "${addon_config_dir}/vito.xml" ]; then

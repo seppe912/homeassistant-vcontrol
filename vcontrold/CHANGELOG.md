@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.13.4
+
+- Fix startup failure when using a legacy custom `vito.xml` from `/homeassistant/vcontrold`
+
 ## 1.13.3
 
 - Fix MQTT publishing for `STRING` commands so text payloads stay strings in MQTT clients such as MQTT Explorer
