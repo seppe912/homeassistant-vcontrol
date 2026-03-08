@@ -34,4 +34,4 @@ configuration:
     description: "Output of debug messages"
   commands:
     name: "Commands"
-    description: "List of commands to send. (Format: `command1:TYPE,command2:TYPE` where `TYPE` must be `FLOAT` or `STRING`)"
+    description: "List of commands to send. Add one list item per entry, for example `getTempA:FLOAT` or `getError0:STRING`. `TYPE` must be `FLOAT` or `STRING`."

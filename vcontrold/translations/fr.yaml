@@ -34,4 +34,4 @@ configuration:
     description: "Sortie des messages de débogage"
   commands:
     name: "Commands"
-    description: "Liste des commandes à envoyer. (Format: `command1:TYPE,command2:TYPE` avec `TYPE` qui doit être `FLOAT` ou `STRING`)"
+    description: "Liste des commandes a envoyer. Configurez une entree par element de liste, par exemple `getTempA:FLOAT` ou `getError0:STRING`. `TYPE` doit etre `FLOAT` ou `STRING`."

@@ -34,4 +34,4 @@ configuration:
     description: "Ausgabe von Debug-Nachrichten"
   commands:
     name: "Commands"
-    description: "Befehlsliste, die an das Gerät gesendet werden soll. (Format: `command1:TYPE,command2:TYPE` where `TYPE` must be `FLOAT` or `STRING`)"
+    description: "Liste der zu sendenden Befehle. Konfiguriere pro Listeneintrag einen Wert, z. B. `getTempA:FLOAT` oder `getError0:STRING`. `TYPE` muss `FLOAT` oder `STRING` sein."

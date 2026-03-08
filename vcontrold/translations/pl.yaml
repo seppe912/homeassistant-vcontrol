@@ -34,4 +34,4 @@ configuration:
     description: "Wyjście dla debugowania"
   commands:
     name: "Komendy"
-    description: "Lista komend do wysłania. (Format: `command1:TYPE,command2:TYPE` gdzie `TYPE` musi być `FLOAT` lub `STRING`)"
+    description: "Lista komend do wyslania. Skonfiguruj jedna komende na element listy, np. `getTempA:FLOAT` lub `getError0:STRING`. `TYPE` musi byc `FLOAT` lub `STRING`."

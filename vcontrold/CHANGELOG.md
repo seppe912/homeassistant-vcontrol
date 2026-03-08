@@ -1,5 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.13.3
+
+- Fix MQTT publishing for `STRING` commands so text payloads stay strings in MQTT clients such as MQTT Explorer
+- Clarify the `commands` configuration format in the add-on documentation and translated option descriptions
+
 ## 1.13.2
 
 - Fix parsing of the Home Assistant `commands` list so all configured commands are loaded again

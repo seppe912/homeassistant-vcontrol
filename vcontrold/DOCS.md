@@ -72,6 +72,9 @@ commands:
   - getTimerWWMo:STRING
 ```
 
+Each list entry uses the format `command:TYPE`.
+Use `FLOAT` for numeric values and `STRING` for text payloads such as error codes, timer definitions, or string-like status values that should stay strings in MQTT clients.
+
 ### Integration into Home Assistant
 To create entities in Home Assistant, you need to configure MQTT sensors - short example with getters and setters (taken from https://github.com/Alexandre-io/homeassistant-vcontrol/issues/7):
 ```yaml
