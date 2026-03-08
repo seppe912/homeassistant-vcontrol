@@ -14,6 +14,7 @@ declare config_file_vcontrold
 declare config_file_vcontrold_source
 declare config_tty
 declare type
+declare value_placeholder
 declare -a commands_array=()
 declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
 declare -r addon_config_dir="${ADDON_CONFIG_DIR:-/config}"
@@ -107,12 +108,17 @@ do
     bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
     printf '%s\n' "${cmd}" >> "${runtime_commands_file}"
 
+    value_placeholder="\$${i}"
+    if [[ "${type}" == "STRING" ]]; then
+        value_placeholder="\$R${i}"
+    fi
+
     printf 'if [ "x$E%d" = "xOK" ]; then\n' "${i}" >> "${runtime_template_file}"
     printf '  mosquitto_pub -h %q -p %q' "${MQTT_HOST}" "${MQTT_PORT}" >> "${runtime_template_file}"
     for auth_arg in "${MQTT_AUTH_ARGS[@]}"; do
         printf ' %q' "${auth_arg}" >> "${runtime_template_file}"
     done
-    printf ' -t %q/$C%d -m "$%d"\n' "${MQTT_TOPIC}" "${i}" "${i}" >> "${runtime_template_file}"
+    printf ' -t %q/$C%d -m "%s"\n' "${MQTT_TOPIC}" "${i}" "${value_placeholder}" >> "${runtime_template_file}"
     printf 'fi\n' >> "${runtime_template_file}"
 done
 

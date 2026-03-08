@@ -47,7 +47,7 @@ chmod +x "${tmp_dir}/bin/mock-vcontrold"
     export BASHIO_CONFIG_tty="/dev/ttyUSB0"
     export BASHIO_CONFIG_device_id="2098"
     export BASHIO_CONFIG_refresh="60"
-    export BASHIO_CONFIG_commands=$'getTempA:FLOAT\ngetTempWWist:FLOAT\ngetTempWWsoll:FLOAT'
+    export BASHIO_CONFIG_commands=$'getTempA:FLOAT\ngetError0:STRING\ngetTempWWsoll:FLOAT'
     export BASHIO_CONFIG_mqtt_topic="openv"
     export BASHIO_CONFIG_mqtt_host="mqtt.local"
     export BASHIO_CONFIG_debug="false"
@@ -57,10 +57,13 @@ chmod +x "${tmp_dir}/bin/mock-vcontrold"
 
 assert_file_exists "${tmp_dir}/run/1_mqtt_commands.txt"
 assert_eq \
-    $'getTempA\ngetTempWWist\ngetTempWWsoll' \
+    $'getTempA\ngetError0\ngetTempWWsoll' \
     "$(cat "${tmp_dir}/run/1_mqtt_commands.txt")" \
     "generated runtime command list"
 assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" 'openv/$C3'
+assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '-m "$1"'
+assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '-m "$R2"'
+assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '-m "$3"'
 assert_file_contains "${tmp_dir}/run/vcontrold.xml" 'device="2098"'
 assert_file_contains "${tmp_dir}/run/vcontrold.xml" "href=\"${tmp_dir}/etc/vcontrold/vito.xml\""
 assert_file_contains "${tmp_dir}/capture/vcontrold-args.txt" "${tmp_dir}/run/vcontrold.xml"
