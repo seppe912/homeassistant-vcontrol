@@ -4,10 +4,7 @@
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
-# Fetch MQTT settings
 source /etc/services.d/get_mqtt_settings.sh
-
-# Fetch Vcontrold settings
 source /etc/services.d/get_vcontrold_settings.sh
 
 declare command
@@ -15,8 +12,8 @@ declare payload
 declare request
 declare topic
 declare value
+declare -r lock_file="/tmp/vcontrol.lock"
 
-# Ensure required environment variables are set
 if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$MQTT_TOPIC" || -z "$REFRESH_RATE" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
     bashio::log.error "Missing required MQTT or Vcontrold environment variables."
     exit 1
@@ -47,7 +44,7 @@ while true; do
             request="${command}"
         fi
 
-        if vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -o /dev/stdout -c "${request}"; then
+        if flock -w 120 "${lock_file}" vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -o /dev/stdout -c "${request}"; then
             bashio::log.info "Command [${command}] executed successfully."
         else
             bashio::log.error "Failed to execute command [${command}] with value: ${value}"
